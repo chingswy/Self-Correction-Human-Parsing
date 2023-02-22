@@ -19,6 +19,12 @@ from easymocap.visualize.ffmpeg_wrapper import VideoMaker
 
 k_num_parser_cls = 20
 k_cls_idxs = [[5, 6, 7], [1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
+'''
+0-Background, 1-Hat, 2-Hair, 3-Glove, 4-Sunglasses,
+5-Upper Cloth, 6-Drees, 7-Coat, 8-Sock, 9-Pant,
+10-Jumpsuit, 11-Sarf, 12-Skirt, 13-Face, 14-Left Leg
+15-Right Leg, 16-Left Arm, 17-Right Arm, 18-Left Shoe, 19-Right Shoe
+'''
 
 def generate_videos(imgs_path, restart=True, fps_in=50, fps_out=50, remove_imgs=False, reorder=False,
                     ext='.jpg', debug=False):
@@ -44,7 +50,7 @@ def generate_optical_flows(video_path, device='cuda', fps_out=50):
     # batch resize
     # frames = F.resize(frames, size=[512, 512], antialias=False)
 
-    # flow_video_imgs = torch.zeros(num_frames - 1, frames.shape[2], frames.shape[3], frames.shape[1])
+    flow_video_imgs = torch.zeros(num_frames - 1, frames.shape[2], frames.shape[3], frames.shape[1])
     raw_flows = torch.zeros(2, frames.shape[2], frames.shape[3])
     for i in tqdm(range(num_frames - 1)):
         pre_imgs_batch = torch.stack([frames[i]]).to(device)
@@ -56,11 +62,11 @@ def generate_optical_flows(video_path, device='cuda', fps_out=50):
 
         np.save(os.path.join(out_imgs_dir, str(i).zfill(6)), np.round(raw_flows.permute(1, 2, 0).numpy()).astype(np.int16))
 
-        # flow_imgs = flow_to_image(predicted_flows)
-        # flow_video_imgs[i] = flow_imgs.permute(0, 2, 3, 1).cpu()[0]
+        flow_imgs = flow_to_image(predicted_flows)
+        flow_video_imgs[i] = flow_imgs.permute(0, 2, 3, 1).cpu()[0]
 
-    # write_video(video_path.replace('.mp4', '_of.mp4'), flow_video_imgs, fps_out)
-    print('Optical flow video saving done.')
+    write_video(video_path.replace('.mp4', '_of.mp4'), flow_video_imgs, fps_out)
+    print('Optical flows video saving done.')
 
 def inverse_palette(palette, color):
     img_palette = ImagePalette(mode='RGB', palette=palette)
@@ -136,28 +142,41 @@ def optim_parsing(parsings_path, optical_flows_path, num_cls):
         out_name = imgs_name[i].replace('parsing', 'parsing-opted')
         cv2.imwrite(out_name, opted_parsing)
 
+def generate_opted_parsing(data_path, output_path, num_parser_cls, cls_idxs):
+    print(data_path, output_path)
+    palette = get_palette(num_parser_cls)
+    imgs_path_list = sorted(glob(os.path.join(data_path, 'images', '*')))
+    for imgs_path in imgs_path_list:
+        tmp_output_path = os.path.abspath(os.path.join(output_path, 'tmp_' + '_'.join(imgs_path.split(os.sep)[-3:])))
+        os.makedirs(tmp_output_path, exist_ok=True)
+
+        seq = imgs_path.split(os.sep)[-3]
+        sub = imgs_path.split(os.sep)[-1]
+
+        parsings_path = os.path.join(output_path, seq, 'mask-schp-parsing', sub)
+        generate_merged_parsing(parsings_path, cls_idxs, palette)
+
+        if os.path.exists(tmp_output_path + '/seq.mp4'):
+            print('Already exsit the video of captured images!')
+        else:
+            generate_videos(imgs_path)
+            mv_cmd = 'mv ' + imgs_path + '.mp4 ' + tmp_output_path + '/seq.mp4'
+            os.system(mv_cmd)
+
+        if os.path.exists(tmp_output_path + '/seq_of.mp4'):
+            print('Already exsit optical flows of the video!')
+        else:
+            generate_optical_flows(tmp_output_path + '/seq.mp4')
+
+        ofs_path = tmp_output_path.replace('.mp4', '_of/')
+        optim_parsing(parsings_path.replace('parsing', 'merged-parsing'), ofs_path, len(cls_idxs))
+
+
 if __name__ == '__main__':
-    # palette = get_palette(k_num_parser_cls)
-    '''
-    0-Background, 1-Hat, 2-Hair, 3-Glove, 4-Sunglasses,
-    5-Upper Cloth, 6-Drees, 7-Coat, 8-Sock, 9-Pant,
-    10-Jumpsuit, 11-Sarf, 12-Skirt, 13-Face, 14-Left Leg
-    15-Right Leg, 16-Left Arm, 17-Right Arm, 18-Left Shoe, 19-Right Shoe
-    '''
-    # parsings_path = '/datasets/shen/ClothProj/results/schp/CoreView_550_01/mask-schp-parsing/01'
-    # generate_merged_parsing(parsings_path, k_cls_idxs, palette)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path', type=str, default='')
+    parser.add_argument('--output', type=str, default='data')
+    args = parser.parse_args()
 
-    # imgs_path = '/datasets/shen/ClothProj/data/zju_mocap/CoreView_550_01/images/01'
-    # generate_videos(imgs_path)
-    # generate_optical_flows(imgs_path + '.mp4')
-
-    # pre_path = '/datasets/shen/ClothProj/data/zju_mocap/CoreView_550_01/images/01/000128.jpg'
-    # of_path = '/datasets/shen/ClothProj/data/zju_mocap/CoreView_550_01/images/01_of/000128.npy'
-    # pre_frame = cv2.imread(pre_path)
-    # optical_flow = np.load(of_path)
-    # post_frame = evaluate_optical_flow(pre_frame, optical_flow)
-    # cv2.imwrite('/datasets/shen/ClothProj/data/zju_mocap/CoreView_550_01/images/01_of/000128_post.jpg', post_frame)
-
-    parsings_path = '/datasets/shen/ClothProj/results/schp/CoreView_550_01/mask-schp-merged-parsing/01'
-    optical_flows_path = '/datasets/shen/ClothProj/data/zju_mocap/CoreView_550_01/images/01_of'
-    optim_parsing(parsings_path, optical_flows_path, len(k_cls_idxs))
+    generate_opted_parsing(args.path, args.output, k_num_parser_cls, k_cls_idxs)
