@@ -142,8 +142,40 @@ def optim_parsing(parsings_path, optical_flows_path, num_cls):
         out_name = imgs_name[i].replace('parsing', 'parsing-opted')
         cv2.imwrite(out_name, opted_parsing)
 
-def generate_opted_parsing(data_path, output_path, num_parser_cls, cls_idxs):
-    print(data_path, output_path)
+def generate_valid_masks(imgs_path, output_path, thres, kernel_size=3):
+    os.makedirs(output_path, exist_ok=True)
+    imgs_name_list = sorted(glob(os.path.join(imgs_path, '*.jpg')))
+    for i in range(len(imgs_name_list)):
+        img_name = imgs_name_list[i]
+        img = cv2.imread(img_name)
+        mask = (img[:, :, 0] >= thres).astype(np.uint8)
+        mask *= (img[:, :, 0] >= thres).astype(np.uint8)
+        mask *= (img[:, :, 0] >= thres).astype(np.uint8)
+
+        kernel = np.ones((kernel_size, kernel_size), np.uint8)
+        mask_dilate = cv2.dilate(mask, kernel)
+        mask_erode = cv2.erode(mask_dilate, kernel)
+
+        img = cv2.resize(img, (1024, 1024), cv2.INTER_MAX)
+        cv2.imwrite(os.path.join(output_path, str(i).zfill(6) + '.png'), mask_erode)
+
+def generate_valid_parsing(parsings_path, masks_path, num_cls):
+    out_dir = parsings_path.replace('opted', 'opted-thres')
+    os.makedirs(out_dir, exist_ok=True)
+    parsings_name_list = sorted(glob(os.path.join(parsings_path, '*.png')))
+    for parsing_name in parsings_name_list:
+        img_name = parsing_name.split(os.sep)[-1]
+        mask_name = os.path.join(masks_path, img_name)
+        
+        parsing = cv2.imread(parsing_name, 2)
+        mask = cv2.imread(mask_name, 2)
+        
+        parsing[((parsing > 0) - ((parsing > 0) * mask > 0).astype(np.uint8) > 0).astype(np.bool8)] = num_cls + 1
+
+        out_name = parsing_name.replace('opted', 'opted-thres')
+        cv2.imwrite(out_name, parsing)
+
+def generate_opted_parsing(data_path, output_path, num_parser_cls, cls_idxs, is_thres=False):
     palette = get_palette(num_parser_cls)
     imgs_path_list = sorted(glob(os.path.join(data_path, 'images', '*')))
     for imgs_path in imgs_path_list:
@@ -155,6 +187,7 @@ def generate_opted_parsing(data_path, output_path, num_parser_cls, cls_idxs):
 
         parsings_path = os.path.join(output_path, seq, 'mask-schp-parsing', sub)
         generate_merged_parsing(parsings_path, cls_idxs, palette)
+        parsings_path = parsings_path.replace('parsing', 'merged-parsing')
 
         if os.path.exists(tmp_output_path + '/seq.mp4'):
             print('Already exsit the video of captured images!')
@@ -168,15 +201,22 @@ def generate_opted_parsing(data_path, output_path, num_parser_cls, cls_idxs):
         else:
             generate_optical_flows(tmp_output_path + '/seq.mp4')
 
-        ofs_path = tmp_output_path.replace('.mp4', '_of/')
-        optim_parsing(parsings_path.replace('parsing', 'merged-parsing'), ofs_path, len(cls_idxs))
+        ofs_path = (tmp_output_path + '/seq.mp4').replace('.mp4', '_of/')
+        optim_parsing(parsings_path, ofs_path, len(cls_idxs))
+        parsings_path  = parsings_path.replace('parsing', 'parsing-opted')
 
+        if is_thres:
+            valid_masks_path = os.path.join(output_path, seq, 'mask-color-thres-close', sub)
+            generate_valid_masks(imgs_path, valid_masks_path, 28)
+
+            generate_valid_parsing(parsings_path, valid_masks_path, len(cls_idxs))
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str, default='')
     parser.add_argument('--output', type=str, default='data')
+    parser.add_argument('--thres', action='store_true')
     args = parser.parse_args()
 
-    generate_opted_parsing(args.path, args.output, k_num_parser_cls, k_cls_idxs)
+    generate_opted_parsing(args.path, args.output, k_num_parser_cls, k_cls_idxs, args.thres)
