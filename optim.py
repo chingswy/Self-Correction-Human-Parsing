@@ -18,11 +18,12 @@ from mhp_extension.logits_fusion import get_palette
 from easymocap.visualize.ffmpeg_wrapper import VideoMaker
 
 k_num_parser_cls = 20
-k_cls_idxs = [[5, 6, 7], [1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
+# k_cls_idxs = [[5, 6, 7], [1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
+k_cls_idxs = [[12], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19]]    # for case 567, 568
 '''
 0-Background, 1-Hat, 2-Hair, 3-Glove, 4-Sunglasses,
 5-Upper Cloth, 6-Drees, 7-Coat, 8-Sock, 9-Pant,
-10-Jumpsuit, 11-Sarf, 12-Skirt, 13-Face, 14-Left Leg
+10-Jumpsuit, 11-Scarf, 12-Skirt, 13-Face, 14-Left Leg
 15-Right Leg, 16-Left Arm, 17-Right Arm, 18-Left Shoe, 19-Right Shoe
 '''
 
