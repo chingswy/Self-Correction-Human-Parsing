@@ -19,7 +19,7 @@ from easymocap.visualize.ffmpeg_wrapper import VideoMaker
 
 k_num_parser_cls = 20
 # k_cls_idxs = [[5, 6, 7], [1, 2, 3, 4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
-k_cls_idxs = [[12], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19]]    # for case 567, 568
+k_cls_idxs = [[9, 12], [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 13, 14, 15, 16, 17, 18, 19]]    # for case 567, 568
 '''
 0-Background, 1-Hat, 2-Hair, 3-Glove, 4-Sunglasses,
 5-Upper Cloth, 6-Drees, 7-Coat, 8-Sock, 9-Pant,
@@ -178,6 +178,12 @@ def generate_valid_parsing(parsings_path, masks_path, num_cls):
 
 def generate_opted_parsing(data_path, output_path, num_parser_cls, cls_idxs, is_thres=False):
     palette = get_palette(num_parser_cls)
+
+    # debug_info
+    # for i in range(num_parser_cls):
+    #     print(i, np.array(palette).reshape(-1, 3)[i])
+    # return
+
     imgs_path_list = sorted(glob(os.path.join(data_path, 'images', '*')))
     for imgs_path in imgs_path_list:
         tmp_output_path = os.path.abspath(os.path.join(output_path, 'tmp_' + '_'.join(imgs_path.split(os.sep)[-3:])))
