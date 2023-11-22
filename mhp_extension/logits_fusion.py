@@ -200,20 +200,16 @@ def compute_confidence(im_name, feature_map, class_map,
 
 
 def result_saving(fused_output, img_name, img_height, img_width, output_dir, mask_output_path, bbox_score, msrcnn_bbox):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     global_root = os.path.join(output_dir, 'global_parsing')
     instance_root = os.path.join(output_dir, 'instance_parsing')
     tag_dir = os.path.join(output_dir, 'global_tag')
     schp_dir = os.path.join(output_dir, 'schp')
 
-    if not os.path.exists(global_root):
-        os.makedirs(global_root, exist_ok=True)
-    if not os.path.exists(instance_root):
-        os.makedirs(instance_root, exist_ok=True)
-    if not os.path.exists(tag_dir):
-        os.makedirs(tag_dir, exist_ok=True)
+    os.makedirs(global_root, exist_ok=True)
+    os.makedirs(instance_root, exist_ok=True)
+    os.makedirs(tag_dir, exist_ok=True)
     os.makedirs(schp_dir, exist_ok=True)
 
     # For visualizing indexed png image.
